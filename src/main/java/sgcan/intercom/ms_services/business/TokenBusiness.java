@@ -1,4 +1,4 @@
-package sgcan.intercom.ms_services.bussines;
+package sgcan.intercom.ms_services.business;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -7,33 +7,34 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 import sgcan.intercom.ms_services.model.Token;
 
 @Component
-public class TokenBussines {
+public class TokenBusiness {
     @Autowired
-    public FitoBussines fitoBussines;
+    private  WebClient webClient;
 
-    public Mono<Token> getToken(){
+    @Autowired
+    public FitoBusiness fitoBusiness;
+
+    public Mono<Token> postToken(){
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.add("client_id", "vuce-peru");
-        formData.add("client_secret", "GwUiKQCxvMAQYHMDDrrhh7PTT2EY7ipz");
+        formData.add("client_id", "vuce-colombia");
+        formData.add("client_secret", "Kl36jA67LNI3fTgjCtp8qElCYZEI3wzT");
         formData.add("grant_type", "client_credentials");
-        //https://azure-intercom.ddns.net:28443
-        ///realms/intercom/protocol/openid-connect/token
-        String URL="https://azure-intercom.ddns.net:28443";
-        String ENDPOINT = "realms/intercom/protocol/openid-connect/token";
-        WebClient webClient= WebClient.builder().baseUrl(URL).build();
-        Mono<Token> response= webClient.post().uri(ENDPOINT).contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .bodyValue(formData).retrieve().bodyToMono(Token.class);
+        String URL = "https://azure-intercom.ddns.net:28443/realms/intercom/protocol/openid-connect/token";
 
-        return response;
+        return webClient.post()
+                .uri(URL)
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .bodyValue(formData)
+                .retrieve()
+                .bodyToMono(Token.class);
     }
-
-    public Mono<Token> taskToken(){
-        return this.getToken().map(x->{
+   // @Scheduled(fixedDelay = 5000)
+    public Mono<Token> token(){
+        return this.postToken().map(x->{
             Token a = new Token();
             a.setAccess_token(x.getAccess_token());
             a.setExpires_in(x.getExpires_in());
@@ -46,9 +47,11 @@ public class TokenBussines {
         });
 
     }
+
     @Scheduled(fixedDelay = 5000)
-    public Mono<String> getConsulta(){
-       return taskToken().flatMap(x->fitoBussines.getFito(x.getAccess_token())
-               .doOnNext(p->System.out.println(p)));
+    public Mono<String> statusFito(){
+        return token()
+            .flatMap(x->fitoBusiness.getFito(x.getAccess_token()));
     }
+
 }
